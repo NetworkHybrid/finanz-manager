@@ -30,7 +30,7 @@ const PAGES = {
 };
 
 /* ---------- App-Zustand ---------- */
-let state = { transactions: [], subscriptions: [] };
+let state = { transactions: [], subscriptions: [], initialized: false };
 let txFilter = "all";
 
 /* ---------- Helfer ---------- */
@@ -75,6 +75,35 @@ function toast(msg) {
   toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
 }
 
+/** In-App-Bestätigungsdialog — gibt ein Promise<boolean> zurück. */
+function confirmDialog(message, { title = "Bestätigen", confirmLabel = "Löschen" } = {}) {
+  return new Promise((resolve) => {
+    const dlg = $("#confirm-dialog");
+    $("#confirm-title").textContent = title;
+    $("#confirm-msg").textContent = message;
+    $("#confirm-yes").textContent = confirmLabel;
+
+    let done = false;
+    const finish = (result) => {
+      if (done) return;
+      done = true;
+      $("#confirm-yes").removeEventListener("click", onYes);
+      $("#confirm-no").removeEventListener("click", onNo);
+      dlg.removeEventListener("close", onClose);
+      if (dlg.open) dlg.close();
+      resolve(result);
+    };
+    const onYes = () => finish(true);
+    const onNo = () => finish(false);
+    const onClose = () => finish(false);
+
+    $("#confirm-yes").addEventListener("click", onYes);
+    $("#confirm-no").addEventListener("click", onNo);
+    dlg.addEventListener("close", onClose);
+    dlg.showModal();
+  });
+}
+
 /* ---------- Persistenz ---------- */
 async function persist() {
   if (!hasTauri) return;
@@ -91,6 +120,7 @@ async function loadState() {
     const data = await invoke("load_data");
     state.transactions  = Array.isArray(data.transactions)  ? data.transactions  : [];
     state.subscriptions = Array.isArray(data.subscriptions) ? data.subscriptions : [];
+    state.initialized   = data.initialized === true;
   } catch (e) {
     console.error("Laden fehlgeschlagen:", e);
   }
@@ -535,14 +565,21 @@ async function init() {
     const data = sampleData();
     state.transactions = data.transactions;
     state.subscriptions = data.subscriptions;
+    state.initialized = true;
     await persist();
     render();
     toast("Beispieldaten geladen");
   });
 
   $("#btn-reset").addEventListener("click", async () => {
-    if (!confirm("Wirklich alle Buchungen und Abos löschen?")) return;
-    state = { transactions: [], subscriptions: [] };
+    const ok = await confirmDialog(
+      "Alle Buchungen und Abos werden unwiderruflich gelöscht. Es werden danach keine Beispieldaten neu angelegt.",
+      { title: "Alle Daten löschen", confirmLabel: "Endgültig löschen" }
+    );
+    if (!ok) return;
+    state.transactions = [];
+    state.subscriptions = [];
+    state.initialized = true;
     await persist();
     render();
     toast("Alle Daten gelöscht");
@@ -561,11 +598,15 @@ async function init() {
     $("#data-path").textContent = "Browser-Vorschau (keine Persistenz)";
   }
 
-  // Erststart: automatisch Beispieldaten anlegen
-  if (state.transactions.length === 0 && state.subscriptions.length === 0) {
-    const data = sampleData();
-    state.transactions = data.transactions;
-    state.subscriptions = data.subscriptions;
+  // Erststart: Beispieldaten nur EINMALIG anlegen — danach nie wieder
+  // automatisch, auch wenn der Nutzer alle Daten gelöscht hat.
+  if (!state.initialized) {
+    if (state.transactions.length === 0 && state.subscriptions.length === 0) {
+      const data = sampleData();
+      state.transactions = data.transactions;
+      state.subscriptions = data.subscriptions;
+    }
+    state.initialized = true;
     await persist();
   }
 
