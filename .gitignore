@@ -1,0 +1,10 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+appicon.png
+.DS_Store
+
+# Signaturschlüssel niemals einchecken
+*.key
+*.key.pub

@@ -1,0 +1,51 @@
+name: Release
+
+# Baut die App und veröffentlicht ein GitHub Release,
+# sobald ein Versions-Tag (z. B. v0.2.0) gepusht wird.
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Rust einrichten
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Rust-Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Abhängigkeiten installieren
+        run: npm install
+
+      - name: Bauen & Release veröffentlichen
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signaturschlüssel für den Auto-Updater (als Repo-Secret hinterlegt).
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Finanz-Manager ${{ github.ref_name }}"
+          releaseBody: "Installierte Apps aktualisieren sich automatisch über den eingebauten Updater. Für eine Neuinstallation die .dmg-Datei laden."
+          releaseDraft: false
+          prerelease: false
+          args: --target universal-apple-darwin

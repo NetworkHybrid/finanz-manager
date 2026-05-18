@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Finanz-Manager</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- Seitenleiste -->
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">€</div>
+          <div>
+            <div class="brand-name">Finanz-Manager</div>
+            <div class="brand-sub">Abos &amp; Buchungen</div>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <button class="nav-item active" data-view="dashboard">
+            <span class="nav-ico">◧</span> Übersicht
+          </button>
+          <button class="nav-item" data-view="transactions">
+            <span class="nav-ico">⇄</span> Buchungen
+          </button>
+          <button class="nav-item" data-view="subscriptions">
+            <span class="nav-ico">↻</span> Abos
+          </button>
+          <button class="nav-item" data-view="settings">
+            <span class="nav-ico">⚙</span> Einstellungen
+          </button>
+        </nav>
+
+        <div class="sidebar-foot">
+          <div class="balance-label">Aktueller Kontostand</div>
+          <div class="balance-value" id="sidebar-balance">– €</div>
+        </div>
+      </aside>
+
+      <!-- Hauptbereich -->
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h1 id="page-title">Übersicht</h1>
+            <p id="page-sub" class="page-sub">Dein finanzieller Überblick</p>
+          </div>
+          <div class="topbar-actions" id="topbar-actions"></div>
+        </header>
+
+        <div class="content">
+          <!-- Übersicht -->
+          <section class="view active" id="view-dashboard">
+            <div class="stat-grid" id="stat-grid"></div>
+            <div class="dash-grid">
+              <div class="card">
+                <div class="card-head">
+                  <h2>Ausgaben nach Kategorie</h2>
+                  <span class="card-tag" id="cat-period">Diesen Monat</span>
+                </div>
+                <div id="category-chart" class="chart"></div>
+              </div>
+              <div class="card">
+                <div class="card-head"><h2>Anstehende Zahlungen</h2></div>
+                <div id="upcoming-list" class="upcoming"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>Letzte Buchungen</h2></div>
+              <div id="recent-list" class="tx-list"></div>
+            </div>
+          </section>
+
+          <!-- Buchungen -->
+          <section class="view" id="view-transactions">
+            <div class="filter-bar">
+              <button class="chip active" data-filter="all">Alle</button>
+              <button class="chip" data-filter="income">Einnahmen</button>
+              <button class="chip" data-filter="expense">Ausgaben</button>
+            </div>
+            <div class="card">
+              <div id="transactions-list" class="tx-list"></div>
+            </div>
+          </section>
+
+          <!-- Abos -->
+          <section class="view" id="view-subscriptions">
+            <div class="sub-summary" id="sub-summary"></div>
+            <div class="card">
+              <div id="subscriptions-list" class="sub-list"></div>
+            </div>
+          </section>
+
+          <!-- Einstellungen -->
+          <section class="view" id="view-settings">
+            <div class="card">
+              <div class="card-head"><h2>Daten</h2></div>
+              <p class="muted">Alle Daten werden lokal auf deinem Gerät gespeichert.</p>
+              <div class="setting-row">
+                <span>Speicherort</span>
+                <code id="data-path">wird geladen …</code>
+              </div>
+              <div class="setting-actions">
+                <button class="btn ghost" id="btn-sample">Beispieldaten laden</button>
+                <button class="btn danger" id="btn-reset">Alle Daten löschen</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h2>Updates</h2>
+                <span class="card-tag" id="version-tag">v–</span>
+              </div>
+              <p class="muted">Neue Versionen werden über GitHub bereitgestellt und lassen sich direkt aus der App installieren.</p>
+              <div class="update-status" id="update-status">Noch nicht nach Updates gesucht.</div>
+              <div class="setting-actions">
+                <button class="btn ghost" id="btn-check-update">Nach Updates suchen</button>
+                <button class="btn primary" id="btn-install-update" hidden>Update installieren &amp; neu starten</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>Über</h2></div>
+              <p class="muted">
+                Finanz-Manager <span id="about-version">0.1.0</span> — gebaut mit Tauri &amp; Rust.
+                Alle Daten bleiben lokal auf deinem Gerät.
+              </p>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <!-- Dialog: Buchung -->
+    <dialog id="tx-dialog" class="dialog">
+      <form method="dialog" id="tx-form">
+        <h3 id="tx-dialog-title">Neue Buchung</h3>
+        <div class="seg" id="tx-type-seg">
+          <label class="seg-opt active">
+            <input type="radio" name="type" value="expense" checked /> Ausgabe
+          </label>
+          <label class="seg-opt">
+            <input type="radio" name="type" value="income" /> Einnahme
+          </label>
+        </div>
+        <label class="field">
+          <span>Betrag (€)</span>
+          <input type="number" name="amount" step="0.01" min="0" required placeholder="0,00" />
+        </label>
+        <label class="field">
+          <span>Kategorie</span>
+          <select name="category" id="tx-category"></select>
+        </label>
+        <label class="field">
+          <span>Datum</span>
+          <input type="date" name="date" id="tx-date" required />
+        </label>
+        <label class="field">
+          <span>Notiz (optional)</span>
+          <input type="text" name="note" maxlength="80" placeholder="z. B. Wocheneinkauf" />
+        </label>
+        <div class="dialog-actions">
+          <button type="button" class="btn ghost" data-close>Abbrechen</button>
+          <button type="submit" class="btn primary">Speichern</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Dialog: Abo -->
+    <dialog id="sub-dialog" class="dialog">
+      <form method="dialog" id="sub-form">
+        <h3 id="sub-dialog-title">Neues Abo</h3>
+        <label class="field">
+          <span>Name</span>
+          <input type="text" name="name" required maxlength="40" placeholder="z. B. Netflix" />
+        </label>
+        <label class="field">
+          <span>Betrag (€)</span>
+          <input type="number" name="amount" step="0.01" min="0" required placeholder="0,00" />
+        </label>
+        <label class="field">
+          <span>Abrechnungszyklus</span>
+          <select name="cycle">
+            <option value="weekly">Wöchentlich</option>
+            <option value="monthly" selected>Monatlich</option>
+            <option value="quarterly">Vierteljährlich</option>
+            <option value="yearly">Jährlich</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Nächste Zahlung</span>
+          <input type="date" name="nextPayment" id="sub-date" required />
+        </label>
+        <label class="field">
+          <span>Kategorie</span>
+          <select name="category" id="sub-category"></select>
+        </label>
+        <div class="dialog-actions">
+          <button type="button" class="btn ghost" data-close>Abbrechen</button>
+          <button type="submit" class="btn primary">Speichern</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
